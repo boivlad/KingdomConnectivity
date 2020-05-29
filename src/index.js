@@ -1,89 +1,59 @@
-let outgoingEdges, incomingEdges, topSortArr, visited, cycle, startTime, endTime, time;
-
-function init() {
-  outgoingEdges = [];
-  incomingEdges = [];
-  topSortArr = [];
-  visited = {};
-  cycle = false;
-  startTime = [];
-  endTime = [];
-  time = 0;
-}
-
-function dfs(from, n) {
-  let to, mayBeCycle = false;
-  if (visited[from] === 1) {
-    return true;
-  }
-  if (visited[from] === 2) {
-    return false;
-  }
-
-  startTime[from] = ++time;
-  visited[from] = 1;
-  for (to in outgoingEdges[from]) {
-    mayBeCycle = dfs(to, n) || mayBeCycle;
-  }
-  visited[from] = 2;
-  endTime[from] = ++time;
-  if (mayBeCycle && visited[n] && (startTime[from] <= startTime[n]) && (endTime[from] >= endTime[n])) {
-    cycle = true;
-  }
-
-  topSortArr.push(parseInt(from));
-  return false;
-}
-
-function topSort(n) {
-  dfs(1, n);
-  return topSortArr.reverse();
-}
-
-function getNumOfPaths(topSortedOrder, startVertex, n) {
-  let total;
-  const numOfPaths = [];
-
-  for (let i = 0; i <= n; i++) {
-    numOfPaths[i] = 0;
-  }
-  numOfPaths[1] = 1;
-
-  for (let i = 1; i < topSortedOrder.length; i++) {
-    let vertex = topSortedOrder[i];
-    let incoming = incomingEdges[vertex];
-    total = 0;
-    for (let j in incoming) {
-      total += (numOfPaths[j] * outgoingEdges[j][vertex]);
-      total %= 1e9;
-    }
-    numOfPaths[vertex] = total;
-  }
-
-  return numOfPaths[n];
-}
-
-function kingdomConnectivity(n, m, arr) {
-  init();
+module.exports = function countPaths(n, m, arr) {
+  const edges = {};
   for (let i = 1; i <= n; i++) {
-    outgoingEdges[i] = {};
-    incomingEdges[i] = {};
+    edges[i] = {
+      f: [],
+      r: []
+    };
   }
-  let pairArr = [];
-  for (let i = 1; i <= m; i++) {
-    pairArr[0] = arr[i - 1][0];
-    pairArr[1] = arr[i - 1][1];
-    let from = pairArr[0];
-    let to = pairArr[1];
-    if (!outgoingEdges[from][to]) {
-      outgoingEdges[from][to] = 1;
-    } else {
-      outgoingEdges[from][to]++;
-    }
-    incomingEdges[to][from] = true;
+  for (let i = 0; i < m; i++) {
+    edges[arr[i][0]].f.push(arr[i][1]);
+    edges[arr[i][1]].r.push(arr[i][0]);
   }
-  pairArr = topSort(n);
-  return cycle ? "INFINITE PATHS" : getNumOfPaths(pairArr, 1, n);
+  const visible = Array(n + 1);
+  for (let i = 1; i <= n; i++) {
+    visible[i] = false;
+  }
+  dfs(1, edges, visible);
+  const ways = Array(n + 1);
+  for (let i = 1; i <= n; i++) {
+    ways[i] = null;
+  }
+  ways[1] = 1;
+  const result = dfsR(n, edges, ways, visible);
+  return result > 0 ? result : 'INFINITE PATHS';
 }
 
-module.exports = kingdomConnectivity;
+function dfs(s, edges, visible) {
+  if (visible[s]) {
+    return;
+  }
+  visible[s] = true;
+  for (let i = 0; i < edges[s].f.length; i++) {
+    dfs(edges[s].f[i], edges, visible);
+  }
+}
+function dfsR(s, edges, ways, visible) {
+  if (ways[s] !== null && ways[s] >= 0)
+    return ways[s];
+  if (ways[s] < 0)
+    return -2;
+  if (!visible[s]) {
+    ways[s] = 0;
+    return 0;
+  }
+  ways[s] = -1;
+
+  let sum = 0;
+  for (let i = 0; i < edges[s].r.length; i++) {
+    const way = dfsR(edges[s].r[i], edges, ways, visible);
+
+    if (way < 0)
+      return way;
+
+    sum += way;
+  }
+  sum %= 1000000000;
+  ways[s] = sum;
+  return sum;
+}
